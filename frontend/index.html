@@ -1,1 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0B0E14" />
+  <title>3T Dial — Stay Connected Globally</title>
+  <meta name="description" content="3T Dial — Global virtual numbers with two-way calls, SMS, and voicemail. A Product of Tech Talk Titans." />
+  <meta property="og:title" content="3T Dial — Stay Connected Globally" />
+  <meta property="og:description" content="A Product of Tech Talk Titans" />
 
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div x-data="App" x-init="init()" x-cloak>
+
+  <!-- ============ LOADING ============ -->
+  <template x-if="loading">
+    <div class="auth-screen"><div class="muted">Loading…</div></div>
+  </template>
+
+  <!-- ============ AUTH VIEWS ============ -->
+  <template x-if="!user && !loading">
+    <div>
+      <!-- LOGIN -->
+      <div class="auth-screen" x-show="route === 'login'">
+        <div class="auth-card">
+          <div class="brand">
+            <img src="logo.png" alt="3T Dial" class="brand-logo" onerror="this.style.display='none'" />
+            <h1>3T Dial</h1>
+            <p class="brand-slogan">Stay Connected Globally</p>
+            <p class="brand-parent">A Product of Tech Talk Titans</p>
+          </div>
+          <div class="center" style="margin-top:20px;margin-bottom:16px">
+            <h2 style="font-size:16px;font-weight:600">Welcome back</h2>
+            <p class="muted small">Sign in to your account</p>
+          </div>
+          <form class="stack" @submit.prevent="doLogin">
+            <input x-model="loginForm.identifier" placeholder="Email or phone" autocomplete="username" required />
+            <input x-model="loginForm.password" type="password" placeholder="Password" autocomplete="current-password" required />
+            <button class="btn primary full" type="submit" :disabled="busy">
+              <span x-text="busy ? 'Signing in…' : 'Login'"></span>
+            </button>
+          </form>
+          <p class="muted small center" style="margin-top:16px">New here? <a href="#/signup">Create account</a></p>
+        </div>
+      </div>
+
+      <!-- SIGNUP -->
+      <div class="auth-screen" x-show="route === 'signup'">
+        <div class="auth-card">
+          <div class="brand">
+            <img src="logo.png" alt="3T Dial" class="brand-logo" onerror="this.style.display='none'" />
+            <h1>3T Dial</h1>
+            <p class="brand-slogan">Stay Connected Globally</p>
+            <p class="brand-parent">A Product of Tech Talk Titans</p>
+          </div>
+          <div class="center" style="margin-top:20px;margin-bottom:16px">
+            <h2 style="font-size:16px;font-weight:600">Create account</h2>
+            <p class="muted small">Global numbers, calls & SMS</p>
+          </div>
+          <form class="stack" @submit.prevent="doSignup">
+            <input x-model="signupForm.name" placeholder="Full name" required />
+            <input x-model="signupForm.email" type="email" placeholder="Email address" required />
+            <input x-model="signupForm.phone" placeholder="Phone (+country code)" required />
+            <input x-model="signupForm.password" type="password" placeholder="Password (min 8 chars)" required />
+            <input x-model="signupForm.confirm_password" type="password" placeholder="Confirm password" required />
+            <button class="btn primary full" type="submit" :disabled="busy">
+              <span x-text="busy ? 'Creating…' : 'Sign up'"></span>
+            </button>
+          </form>
+          <p class="muted small center" style="margin-top:16px">Already have an account? <a href="#/login">Login</a></p>
+        </div>
+      </div>
+
+      <!-- VERIFY -->
+      <div class="auth-screen" x-show="route === 'verify'">
+        <div class="auth-card">
+          <div class="brand">
+            <img src="logo.png" alt="3T Dial" class="brand-logo" onerror="this.style.display='none'" />
+            <h1>3T Dial</h1>
+            <p class="brand-slogan">Stay Connected Globally</p>
+            <p class="brand-parent">A Product of Tech Talk Titans</p>
+          </div>
+          <h2 style="font-size:18px;margin-top:20px">Verify your account</h2>
+          <p class="muted small" style="margin-top:8px;margin-bottom:16px">
+            We sent codes to <b x-text="pendingEmail"></b> and <b x-text="pendingPhone"></b>.
+          </p>
+
+          <div class="otp-block" :class="{ done: emailVerified }">
+            <div class="otp-head">
+              <span>Email code</span>
+              <span class="ok" x-show="emailVerified">✓ verified</span>
+            </div>
+            <div class="row">
+              <input x-model="otpEmail" inputmode="numeric" maxlength="6" placeholder="6-digit" :disabled="emailVerified" />
+              <button class="btn primary" type="button" @click="verifyEmail" :disabled="emailVerified || busy">Verify</button>
+            </div>
+            <button class="link" type="button" @click="resendEmail">Resend email code</button>
+          </div>
+
+          <div class="otp-block" :class="{ done: phoneVerified }">
+            <div class="otp-head">
+              <span>SMS code</span>
+              <span class="ok" x-show="phoneVerified">✓ verified</span>
+            </div>
+            <div class="row">
+              <input x-model="otpPhone" inputmode="numeric" maxlength="6" placeholder="6-digit" :disabled="phoneVerified" />
+              <button class="btn primary" type="button" @click="verifyPhone" :disabled="phoneVerified || busy">Verify</button>
+            </div>
+            <button class="link" type="button" @click="resendPhone">Resend SMS</button>
+          </div>
+
+          <button class="btn ghost full" type="button" style="margin-top:20px" @click="go('login')">Continue to login</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ============ APP SHELL ============ -->
+  <template x-if="user">
+    <div class="app">
+      <main class="app-main">
+
+        <!-- =====================================================
+             CALLS
+             ===================================================== -->
+        <section x-show="route === 'calls'">
+          <div class="page">
+
+            <!-- Buy number flow overlay -->
+            <template x-if="callView !== 'main'">
+              <div>
+                <!-- STEP 1: pick country -->
+                <template x-if="callView === 'buy-country'">
+                  <div>
+                    <header class="page-head with-back">
+                      <button class="icon-btn" @click="callView='main'"><i data-lucide="arrow-left" style="width:20px;height:20px"></i></button>
+                      <h1>Buy Number</h1>
+                    </header>
+                    <p class="muted small" style="margin-bottom:12px">Choose the country for your number.</p>
+                    <div class="country-grid">
+                      <template x-for="c in countries" :key="c.code">
+                        <button class="country-btn" @click="selectCountry(c.code)">
+                          <span class="country-flag" x-text="c.flag"></span>
+                          <span class="country-name" x-text="c.name"></span>
+                          <span class="muted small" x-text="'from ' + money(c.from_price) + '/mo'"></span>
+                        </button>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- STEP 2: browse + filter -->
+                <template x-if="callView === 'buy-browse'">
+                  <div>
+                    <header class="page-head with-back">
+                      <button class="icon-btn" @click="callView='buy-country'"><i data-lucide="arrow-left" style="width:20px;height:20px"></i></button>
+                      <h1 x-text="'Numbers in ' + (selectedCountry?.name || '')"></h1>
+                    </header>
+
+                    <div class="filter-panel">
+                      <div class="row" style="margin-bottom:8px">
+                        <input x-model="filters.starts" placeholder="Starts with (e.g. 415)" @input.debounce.400ms="searchNumbers()" />
+                        <input x-model="filters.contains" placeholder="Contains" @input.debounce.400ms="searchNumbers()" />
+                        <input x-model="filters.ends" placeholder="Ends with" @input.debounce.400ms="searchNumbers()" />
+                      </div>
+                      <div class="chip-row">
+                        <template x-for="t in ['any','local','toll_free','mobile']" :key="t">
+                          <button class="chip" :class="{active: filters.type === t}"
+                                  @click="filters.type = t; searchNumbers()"
+                                  x-text="t === 'any' ? 'All types' : t.replace('_',' ')">
+                          </button>
+                        </template>
+                        <button class="chip" :class="{active: filters.sms}"
+                                @click="filters.sms = !filters.sms; searchNumbers()">SMS</button>
+                        <button class="chip" :class="{active: filters.voice}"
+                                @click="filters.voice = !filters.voice; searchNumbers()">Voice</button>
+                      </div>
+                    </div>
+
+                    <template x-if="numbersLoading">
+                      <div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div></div>
+                    </template>
+
+                    <template x-if="!numbersLoading && numbers.length === 0">
+                      <div class="empty-state">
+                        <i data-lucide="search-x" style="width:48px;height:48px"></i>
+                        <p>No numbers match these filters. Try loosening them.</p>
+                      </div>
+                    </template>
+
+                    <ul class="list" x-show="!numbersLoading && numbers.length > 0">
+                      <template x-for="n in numbers" :key="n.phone_number">
+                        <li class="list-item">
+                          <div class="li-body">
+                            <div class="li-title tabular" x-text="n.phone_number"></div>
+                            <div class="li-sub">
+                              <span x-text="n.locality || n.country_code"></span>
+                              <span class="badge-sm" x-text="n.number_type"></span>
+                              <template x-if="n.sms"><span class="badge-sm ok">SMS</span></template>
+                              <template x-if="n.voice"><span class="badge-sm ok">Voice</span></template>
+                            </div>
+                          </div>
+                          <div class="li-end" style="text-align:right">
+                            <div class="price-tag" x-text="money(n.price_usd) + '/mo'"></div>
+                            <button class="btn primary small" @click="confirmBuy(n)">Buy</button>
+                          </div>
+                        </li>
+                      </template>
+                    </ul>
+                  </div>
+                </template>
+
+                <!-- STEP 3: confirm -->
+                <template x-if="callView === 'buy-confirm' && selectedNumber">
+                  <div>
+                    <header class="page-head with-back">
+                      <button class="icon-btn" @click="callView='buy-browse'"><i data-lucide="arrow-left" style="width:20px;height:20px"></i></button>
+                      <h1>Confirm purchase</h1>
+                    </header>
+                    <div class="card">
+                      <div class="muted small">You're buying</div>
+                      <div class="tabular" style="font-size:22px;font-weight:700;margin:6px 0 12px" x-text="selectedNumber.phone_number"></div>
+                      <div class="li-sub" style="margin-bottom:16px">
+                        <span x-text="selectedNumber.locality || selectedCountry?.name"></span>
+                        <span class="badge-sm" x-text="selectedNumber.number_type"></span>
+                      </div>
+                      <div class="divider"></div>
+                      <div class="row-between" style="margin-top:12px">
+                        <span class="muted">Monthly rental</span>
+                        <span class="tabular" x-text="money(selectedNumber.price_usd)"></span>
+                      </div>
+                      <div class="row-between" style="margin-top:6px">
+                        <span class="muted">Your balance after</span>
+                        <span class="tabular" :class="(user.balance_usd - selectedNumber.price_usd) < 0 ? 'neg' : ''"
+                              x-text="money(user.balance_usd - selectedNumber.price_usd)"></span>
+                      </div>
+                    </div>
+                    <button class="btn primary full" @click="buyNumber" :disabled="busy || user.balance_usd < selectedNumber.price_usd">
+                      <span x-text="busy ? 'Purchasing…' : 'Buy for ' + money(selectedNumber.price_usd)"></span>
+                    </button>
+                    <template x-if="user.balance_usd < selectedNumber.price_usd">
+                      <p class="err center" style="margin-top:10px">Insufficient balance — top up your wallet first.</p>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </template>
+
+            <!-- MAIN CALLS VIEW -->
+            <template x-if="callView === 'main'">
+              <div>
+                <header class="page-head"><h1>Calls</h1></header>
+                <div class="seg">
+                  <button class="seg-btn" :class="{active: callTab==='dialer'}"    @click="callTab='dialer'">Dialer</button>
+                  <button class="seg-btn" :class="{active: callTab==='history'}"   @click="callTab='history'">History</button>
+                  <button class="seg-btn" :class="{active: callTab==='voicemail'}" @click="callTab='voicemail'">Voicemail</button>
+                  <button class="seg-btn" :class="{active: callTab==='numbers'}"   @click="callTab='numbers'">Numbers</button>
+                </div>
+
+                <!-- DIALER -->
+                <template x-if="callTab === 'dialer'">
+                  <div class="dialer">
+                    <div class="dialer-number tabular">
+                      <span x-text="dialed"></span>
+                      <span class="muted" x-show="!dialed">Enter number</span>
+                    </div>
+                    <div class="keypad">
+                      <template x-for="k in dialKeys" :key="k.k">
+                        <button class="key" @click="dialPress(k.k)">
+                          <span class="key-num" x-text="k.k"></span>
+                          <span class="key-sub" x-show="k.s" x-text="k.s"></span>
+                        </button>
+                      </template>
+                    </div>
+                    <div class="dialer-actions">
+                      <button class="key-flat" @click="dialBackspace()"><i data-lucide="delete" style="width:22px;height:22px"></i></button>
+                      <button class="btn big-round" @click="startCall(dialed)" :disabled="!dialed">
+                        <i data-lucide="phone-call" style="width:26px;height:26px"></i>
+                      </button>
+                      <span style="width:22px"></span>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- HISTORY -->
+                <template x-if="callTab === 'history'">
+                  <div>
+                    <template x-if="callHistory.length === 0">
+                      <div class="empty-state"><i data-lucide="phone" style="width:48px;height:48px"></i><p>No calls yet. When you make or receive calls, they'll show up here.</p></div>
+                    </template>
+                    <ul class="list" x-show="callHistory.length > 0">
+                      <template x-for="h in callHistory" :key="h.id">
+                        <li class="list-item clickable" @click="startCall(h.number, h.name)">
+                          <div class="avatar-sm" x-text="(h.name || 'U')[0]"></div>
+                          <div class="li-body">
+                            <div class="li-title" x-text="h.name"></div>
+                            <div class="li-sub" :class="'dir-' + h.direction">
+                              <i :data-lucide="h.direction === 'in' ? 'phone-incoming' : h.direction === 'out' ? 'phone-outgoing' : 'phone-missed'" style="width:14px;height:14px"></i>
+                              <span x-text="h.number"></span>
+                            </div>
+                          </div>
+                          <div class="li-end muted small" x-text="h.time"></div>
+                        </li>
+                      </template>
+                    </ul>
+                  </div>
+                </template>
+
+                <!-- VOICEMAIL -->
+                <template x-if="callTab === 'voicemail'">
+                  <div>
+                    <template x-if="voicemails.length === 0">
+                      <div class="empty-state"><i data-lucide="voicemail" style="width:48px;height:48px"></i><p>No voicemails. Unanswered calls will appear here.</p></div>
+                    </template>
+                    <ul class="list" x-show="voicemails.length > 0">
+                      <template x-for="v in voicemails" :key="v.id">
+                        <li class="list-item">
+                          <button class="play-btn" @click="playVoicemail(v)">
+                            <i :data-lucide="v.playing ? 'pause' : 'play'" style="width:18px;height:18px"></i>
+                          </button>
+                          <div class="li-body">
+                            <div class="li-title" x-text="v.name"></div>
+                            <div class="li-sub muted"><span x-text="v.from"></span> • <span x-text="v.duration"></span></div>
+                          </div>
+                          <div class="li-end muted small" x-text="v.time"></div>
+                        </li>
+                      </template>
+                    </ul>
+                  </div>
+                </template>
+
+                <!-- NUMBERS -->
+                <template x-if="callTab === 'numbers'">
+                  <div>
+                    <button class="btn primary full" style="margin-bottom:12px" @click="callView='buy-country'">
+                      <i data-lucide="plus" style="width:16px;height:16px"></i> Buy Number
+                    </button>
+                    <template x-if="myNumbers.length === 0">
+                      <div class="empty-state"><i data-lucide="phone" style="width:48px;height:48px"></i><p>You don't have any numbers yet. Tap Buy Number to get your first virtual number.</p></div>
+                    </template>
+                    <ul class="list" x-show="myNumbers.length > 0">
+                      <template x-for="n in myNumbers" :key="n.id">
+                        <li class="list-item">
+                          <div class="tx-icon in"><i data-lucide="phone" style="width:16px;height:16px"></i></div>
+                          <div class="li-body">
+                            <div class="li-title tabular" x-text="n.phone_number"></div>
+                            <div class="li-sub muted"><span x-text="n.country_code"></span> • <span x-text="n.number_type"></span></div>
+                          </div>
+                          <button class="btn ghost small" @click="copyText(n.phone_number)">
+                            <i data-lucide="copy" style="width:14px;height:14px"></i>
+                          </button>
+                        </li>
+                      </template>
+                    </ul>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </section>
+
+        <!-- =====================================================
+             SMS
+             ===================================================== -->
+        <section x-show="route === 'sms'">
+          <div class="sms-page">
+            <aside class="sms-list" :class="{'hidden-mobile': activeConvo}">
+              <header class="page-head"><h1>Messages</h1></header>
+              <div class="search">
+                <i data-lucide="search" style="width:16px;height:16px"></i>
+                <input x-model="smsQuery" placeholder="Search conversations" />
+              </div>
+              <template x-if="filteredConvos.length === 0">
+                <div class="empty-state"><i data-lucide="message-square" style="width:48px;height:48px"></i><p>No conversations yet. When someone texts your number, it'll appear here.</p></div>
+              </template>
+              <ul class="list" x-show="filteredConvos.length > 0">
+                <template x-for="c in filteredConvos" :key="c.id">
+                  <li class="list-item clickable" :class="{active: activeConvo?.id === c.id}" @click="openConvo(c.id)">
+                    <div class="avatar-sm" x-text="(c.name || 'U')[0]"></div>
+                    <div class="li-body">
+                      <div class="li-title" x-text="c.name || c.number"></div>
+                      <div class="li-sub muted" x-text="c.messages[c.messages.length-1]?.text || ''"></div>
+                    </div>
+                    <template x-if="c.unread > 0"><span class="badge" x-text="c.unread"></span></template>
+                  </li>
+                </template>
+              </ul>
+            </aside>
+
+            <section class="sms-thread" :class="{empty: !activeConvo}">
+              <template x-if="activeConvo">
+                <div style="display:flex;flex-direction:column;height:100%">
+                  <header class="thread-head">
+                    <button class="icon-btn mobile-only" @click="closeConvo()"><i data-lucide="arrow-left" style="width:20px;height:20px"></i></button>
+                    <div class="avatar-sm" x-text="(activeConvo.name || 'U')[0]"></div>
+                    <div>
+                      <div class="li-title" x-text="activeConvo.name || activeConvo.number"></div>
+                      <div class="li-sub muted" x-text="activeConvo.number"></div>
+                    </div>
+                  </header>
+                  <div class="thread-body">
+                    <template x-for="m in activeConvo.messages" :key="m.id">
+                      <div class="bubble" :class="m.dir">
+                        <div x-text="m.text"></div>
+                        <div class="bubble-time" x-text="m.time"></div>
+                      </div>
+                    </template>
+                  </div>
+                  <form class="thread-input" @submit.prevent="sendSms">
+                    <input x-model="smsDraft" placeholder="Type a message" autocomplete="off" required />
+                    <button class="btn primary round" type="submit"><i data-lucide="send" style="width:18px;height:18px"></i></button>
+                  </form>
+                </div>
+              </template>
+              <template x-if="!activeConvo">
+                <div class="empty-state"><i data-lucide="message-circle" style="width:48px;height:48px"></i><p>Select a conversation</p></div>
+              </template>
+            </section>
+          </div>
+        </section>
+
+        <!-- =====================================================
+             WALLET
+             ===================================================== -->
+        <section x-show="route === 'wallet'">
+          <div class="page">
+            <header class="page-head"><h1>Wallet</h1></header>
+
+            <div class="balance-card">
+              <div>
+                <div class="muted small">Available balance</div>
+                <div class="balance tabular">
+                  <span x-text="money(user.balance_usd)"></span>
+                  <span class="muted small"> USD</span>
+                </div>
+              </div>
+              <button class="btn primary" @click="topupOpen = true">
+                <i data-lucide="plus" style="width:16px;height:16px"></i> Top up
+              </button>
+            </div>
+
+            <h3 class="section-title">Transaction history</h3>
+            <template x-if="walletTxs.length === 0">
+              <div class="empty-state"><i data-lucide="receipt" style="width:48px;height:48px"></i><p>No transactions yet. Top up to start using 3T Dial.</p></div>
+            </template>
+            <ul class="list" x-show="walletTxs.length > 0">
+              <template x-for="t in walletTxs" :key="t.id">
+                <li class="list-item">
+                  <div class="tx-icon" :class="t.amount_usd > 0 ? 'in' : 'out'">
+                    <i :data-lucide="t.amount_usd > 0 ? 'arrow-down-left' : 'arrow-up-right'" style="width:18px;height:18px"></i>
+                  </div>
+                  <div class="li-body">
+                    <div class="li-title" x-text="t.description"></div>
+                    <div class="li-sub muted small" x-text="formatTime(t.created_at)"></div>
+                  </div>
+                  <div class="amount" :class="t.amount_usd > 0 ? 'pos' : 'neg'">
+                    <span x-text="(t.amount_usd > 0 ? '+' : '') + money(t.amount_usd)"></span>
+                  </div>
+                </li>
+              </template>
+            </ul>
+          </div>
+        </section>
+
+        <!-- =====================================================
+             PROFILE
+             ===================================================== -->
+        <section x-show="route === 'profile'">
+          <div class="page">
+
+            <!-- Sub-view for About / Pricing / Terms / Privacy -->
+            <template x-if="profileView !== 'main'">
+              <div>
+                <header class="page-head with-back">
+                  <button class="icon-btn" @click="profileView = 'main'"><i data-lucide="arrow-left" style="width:20px;height:20px"></i></button>
+                  <h1 x-text="docTitle()"></h1>
+                </header>
+                <div class="doc" x-html="docContent()"></div>
+              </div>
+            </template>
+
+            <!-- Main profile -->
+            <template x-if="profileView === 'main'">
+              <div>
+                <header class="page-head"><h1>Profile</h1></header>
+
+                <div class="profile-head">
+                  <div class="avatar-lg" x-text="user.name[0].toUpperCase()"></div>
+                  <div class="profile-info">
+                    <div class="profile-name" x-text="user.name"></div>
+                    <div class="muted small" x-text="user.email"></div>
+                    <div class="muted small" x-text="user.phone"></div>
+                  </div>
+                </div>
+
+                <div class="stat-row">
+                  <div class="stat-card">
+                    <div class="muted small">Wallet</div>
+                    <div class="stat-val tabular" x-text="money(user.balance_usd)"></div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="muted small">Active numbers</div>
+                    <div class="stat-val" x-text="myNumbers.length"></div>
+                  </div>
+                </div>
+
+                <h3 class="section-title">Your virtual numbers</h3>
+                <template x-if="myNumbers.length === 0">
+                  <div class="card muted small">You haven't bought any numbers yet.</div>
+                </template>
+                <ul class="list" x-show="myNumbers.length > 0">
+                  <template x-for="n in myNumbers" :key="n.id">
+                    <li class="list-item">
+                      <div class="tx-icon in"><i data-lucide="phone" style="width:16px;height:16px"></i></div>
+                      <div class="li-body"><div class="li-title tabular" x-text="n.phone_number"></div></div>
+                      <button class="btn ghost small" @click="copyText(n.phone_number)"><i data-lucide="copy" style="width:14px;height:14px"></i></button>
+                    </li>
+                  </template>
+                </ul>
+
+                <h3 class="section-title">More</h3>
+                <ul class="list">
+                  <li class="list-item clickable" @click="profileView='about'">
+                    <div class="tx-icon neutral"><i data-lucide="info" style="width:16px;height:16px"></i></div>
+                    <div class="li-body"><div class="li-title">About Us</div></div>
+                    <i data-lucide="chevron-right" style="width:18px;height:18px;color:var(--muted)"></i>
+                  </li>
+                  <li class="list-item clickable" @click="profileView='pricing'">
+                    <div class="tx-icon neutral"><i data-lucide="tag" style="width:16px;height:16px"></i></div>
+                    <div class="li-body"><div class="li-title">Pricing</div></div>
+                    <i data-lucide="chevron-right" style="width:18px;height:18px;color:var(--muted)"></i>
+                  </li>
+                  <li class="list-item clickable" @click="profileView='terms'">
+                    <div class="tx-icon neutral"><i data-lucide="file-text" style="width:16px;height:16px"></i></div>
+                    <div class="li-body"><div class="li-title">Terms of Service</div></div>
+                    <i data-lucide="chevron-right" style="width:18px;height:18px;color:var(--muted)"></i>
+                  </li>
+                  <li class="list-item clickable" @click="profileView='privacy'">
+                    <div class="tx-icon neutral"><i data-lucide="shield" style="width:16px;height:16px"></i></div>
+                    <div class="li-body"><div class="li-title">Privacy Policy</div></div>
+                    <i data-lucide="chevron-right" style="width:18px;height:18px;color:var(--muted)"></i>
+                  </li>
+                </ul>
+
+                <div class="brand-footer">
+                  <img src="logo.png" alt="3T Dial" class="brand-footer-logo" onerror="this.style.display='none'" />
+                  <div class="brand-footer-name">3T Dial</div>
+                  <div class="brand-footer-slogan">Stay Connected Globally</div>
+                  <div class="brand-footer-parent">A Product of Tech Talk Titans</div>
+                </div>
+
+                <button class="btn danger full logout" @click="doLogout">
+                  <i data-lucide="log-out" style="width:16px;height:16px"></i> Log out
+                </button>
+              </div>
+            </template>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- BOTTOM NAV -->
+      <nav class="bottom-nav">
+        <a href="#/calls"   class="nav-item" :class="{active: route==='calls'}">
+          <i data-lucide="phone" style="width:22px;height:22px"></i><span>Calls</span>
+        </a>
+        <a href="#/sms"     class="nav-item" :class="{active: route==='sms'}">
+          <i data-lucide="message-square" style="width:22px;height:22px"></i><span>SMS</span>
+        </a>
+        <a href="#/wallet"  class="nav-item" :class="{active: route==='wallet'}">
+          <i data-lucide="wallet" style="width:22px;height:22px"></i><span>Wallet</span>
+        </a>
+        <a href="#/profile" class="nav-item" :class="{active: route==='profile'}">
+          <i data-lucide="user" style="width:22px;height:22px"></i><span>Profile</span>
+        </a>
+      </nav>
+    </div>
+  </template>
+
+  <!-- ============ TOP-UP MODAL ============ -->
+  <template x-if="topupOpen">
+    <div class="modal-back" @click.self="topupOpen = false">
+      <div class="modal">
+        <header class="modal-head">
+          <h3>Top up wallet</h3>
+          <button class="icon-btn" @click="topupOpen = false"><i data-lucide="x" style="width:18px;height:18px"></i></button>
+        </header>
+        <div class="quick-amounts">
+          <template x-for="v in [10,25,50,100]" :key="v">
+            <button class="chip" :class="{active: topupAmount === String(v)}" @click="topupAmount = String(v)" x-text="'$'+v"></button>
+          </template>
+        </div>
+        <input type="number" min="1" max="1000" x-model="topupAmount" placeholder="Custom amount (USD)" />
+        <button class="btn primary full" @click="startTopup" :disabled="busy || !topupAmount">
+          <span x-text="busy ? 'Redirecting…' : 'Continue to payment'"></span>
+        </button>
+        <p class="muted small center" style="margin-top:10px">You'll be redirected to our secure payment partner.</p>
+      </div>
+    </div>
+  </template>
+
+  <!-- ============ IN-CALL OVERLAY ============ -->
+  <template x-if="activeCall">
+    <div class="incall">
+      <div class="incall-top">
+        <div class="incall-avatar" x-text="(activeCall.name || 'U')[0]"></div>
+        <div class="incall-name" x-text="activeCall.name || 'Unknown'"></div>
+        <div class="incall-number" x-text="activeCall.number"></div>
+        <div class="incall-status">
+          <span x-show="activeCall.hold">On hold</span>
+          <span x-show="!activeCall.hold && activeCall.record" style="color:var(--danger)">● Recording</span>
+          <span x-show="!activeCall.hold && !activeCall.record" x-text="'Connected • ' + activeCall.timer"></span>
+        </div>
+      </div>
+
+      <div class="incall-grid">
+        <button class="call-btn" :class="{active: activeCall.mute}" @click="activeCall.mute = !activeCall.mute">
+          <i :data-lucide="activeCall.mute ? 'mic-off' : 'mic'" style="width:22px;height:22px"></i>
+          <span class="cb-label" x-text="activeCall.mute ? 'Unmute' : 'Mute'"></span>
+        </button>
+        <button class="call-btn" :class="{active: activeCall.hold}" @click="activeCall.hold = !activeCall.hold">
+          <i :data-lucide="activeCall.hold ? 'play' : 'pause'" style="width:22px;height:22px"></i>
+          <span class="cb-label" x-text="activeCall.hold ? 'Resume' : 'Hold'"></span>
+        </button>
+        <button class="call-btn" @click="toast('Transfer coming soon','info')">
+          <i data-lucide="phone-forwarded" style="width:22px;height:22px"></i>
+          <span class="cb-label">Transfer</span>
+        </button>
+        <button class="call-btn" :class="{active: activeCall.add}" @click="activeCall.add = !activeCall.add">
+          <i data-lucide="plus" style="width:22px;height:22px"></i>
+          <span class="cb-label">Add</span>
+        </button>
+        <button class="call-btn" :class="{active: activeCall.merge}" @click="activeCall.merge = !activeCall.merge">
+          <i data-lucide="combine" style="width:22px;height:22px"></i>
+          <span class="cb-label">Merge</span>
+        </button>
+        <button class="call-btn" :class="{active: activeCall.record}" @click="activeCall.record = !activeCall.record">
+          <i data-lucide="circle" :style="'width:22px;height:22px;' + (activeCall.record ? 'fill:currentColor' : '')"></i>
+          <span class="cb-label">Record</span>
+        </button>
+        <template x-if="isNative">
+          <button class="call-btn" :class="{active: activeCall.speaker}" @click="activeCall.speaker = !activeCall.speaker">
+            <i :data-lucide="activeCall.speaker ? 'volume-2' : 'smartphone'" style="width:22px;height:22px"></i>
+            <span class="cb-label" x-text="activeCall.speaker ? 'Speaker' : 'Earpiece'"></span>
+          </button>
+        </template>
+      </div>
+
+      <div class="incall-end">
+        <button class="btn danger big-round" @click="endCall()">
+          <i data-lucide="phone-off" style="width:26px;height:26px"></i>
+        </button>
+      </div>
+    </div>
+  </template>
+
+  <!-- ============ TOASTS ============ -->
+  <div class="toast-wrap">
+    <template x-for="t in toasts" :key="t.id">
+      <div class="toast" :class="t.type" x-text="t.msg"></div>
+    </template>
+  </div>
+
+</div>
+
+<!-- Libs -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+<!-- App scripts (before Alpine) -->
+<script src="app.js"></script>
+<script src="auth.js"></script>
+<script src="calls.js"></script>
+<script src="sms.js"></script>
+<script src="wallet.js"></script>
+<script src="profile.js"></script>
+
+<!-- Alpine last -->
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+</body>
+</html>
