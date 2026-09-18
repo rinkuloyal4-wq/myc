@@ -1,1 +1,10 @@
-
+backend/.env
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/*.pyo
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
