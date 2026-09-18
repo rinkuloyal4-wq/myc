@@ -1,1 +1,11 @@
-
+fastapi
+uvicorn[standard]
+sqlmodel
+psycopg2-binary
+redis
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
+python-dotenv
+pydantic[email]
+httpx
